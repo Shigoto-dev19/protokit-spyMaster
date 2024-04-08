@@ -1,21 +1,10 @@
-import { UInt64 } from "o1js";
-import { Balances } from "./balances";
-import { runtimeModule } from "@proto-kit/module";
-
-@runtimeModule()
-export class CustomBalances extends Balances {}
+import { Messages } from "./messages";
 
 export default {
   modules: {
-    Balances,
-    CustomBalances,
+    Messages,
   },
   config: {
-    Balances: {
-      totalSupply: UInt64.from(10_000),
-    },
-    CustomBalances: {
-      totalSupply: UInt64.from(10_000),
-    },
+    Messages: {},
   },
 };
