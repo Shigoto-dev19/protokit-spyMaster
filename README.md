@@ -1,6 +1,25 @@
-# Protokit starter-kit
+# Protokit Spy Master
 
 This repository is a monorepo aimed at kickstarting application chain development using the Protokit framework.
+
+The repository contains the solution to Challenge 3 of the Learn & Earn challenge series, which is part of the Mina Navigator program.
+
+## Protokit & Privacy
+
+Because of the hybrid execution module we can have private computation being done off chain, with a proof of that being sent on chain.
+- The general approach would be: 
+    - Perform off chain computation with private inputs to create a proof , and a public output.
+    - Submit the proof to the sequencer as part of the transaction
+    - The runtime module can verify the proof
+    - The proof's public output can be used on chain for further business logic.
+
+- In the case of the spy master AppChain, a privacy solution would be:
+    - Store the states in initialize as usual.
+    - `agentID` and `securityCode` are public states to assert the integrity of the agent details
+        - These states can be hashed to add a layer of privacy.
+    - In order to process the messages privately
+        - Generate a proof off-chain for the messasge where the agentID & securityCode are publicInputs checked against the stored state.
+        - The `subject`(main message) is a privateInput that is verified on-chain to prove that's is correct.
 
 ## Quick start
 
