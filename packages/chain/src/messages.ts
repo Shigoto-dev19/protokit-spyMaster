@@ -52,7 +52,7 @@ export class Messages extends RuntimeModule<Record<string, never>> {
   );
 
   @runtimeMethod()
-  public initialize(agentAddress: PublicKey, validAgent: AgentData) {
+  public registerAgent(agentAddress: PublicKey, validAgent: AgentData) {
     // Fetch the highest message number tracker state
     let storedMessageNumber = this.lastMessageNumber.get();
 

@@ -54,7 +54,7 @@ describe("spy master", () => {
       const signerAddress = signerKey.toPublicKey();
           
       let tx = await appChain.transaction(signerAddress, () => {
-        spyMaster.initialize(agentAddress, validAgentData);
+        spyMaster.registerAgent(agentAddress, validAgentData);
       });
 
       await tx.sign();
