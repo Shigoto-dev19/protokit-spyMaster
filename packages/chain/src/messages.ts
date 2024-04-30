@@ -5,12 +5,25 @@ import {
   runtimeMethod,
 } from "@proto-kit/module";
 import { State, StateMap, assert } from "@proto-kit/protocol";
-import { Field, Provable, PublicKey, Struct } from "o1js";
+import { Field, Poseidon, Provable, PublicKey, Struct } from "o1js";
+import { MessageProof } from "./messageProof";
+
+//TODO Update README for both branches
+
+//TODO Use inheritance to extend state storage
+//TODO udpate stored state to nonce, block height, transaction sender, 
 
 export class AgentDetails extends Struct({
   agentId: Field, // 12 character
   securityCode: Field, // 2 character
-}) {}
+}) {
+  digest() {
+    return Poseidon.hash([
+      this.agentId,
+      this.securityCode,
+    ]);
+  }
+}
 
 // Represents valid data for one existing agent
 export class AgentData extends Struct({
@@ -32,9 +45,10 @@ export class Message extends Struct({
 @runtimeModule()
 export class Messages extends RuntimeModule<Record<string, never>> {
   @state() public lastMessageNumber = State.from<Field>(Field);
-  @state() public messages = StateMap.from<PublicKey, AgentDetails>(
+  // Maps agent addresses with their corresponding details digest
+  @state() public messages = StateMap.from<PublicKey, Field>(
     PublicKey,
-    AgentDetails,
+    Field,
   );
 
   @runtimeMethod()
@@ -58,7 +72,7 @@ export class Messages extends RuntimeModule<Record<string, never>> {
     );
 
     // Store the agent details
-    this.messages.set(agentAddress, validAgent.details);
+    this.messages.set(agentAddress, validAgent.details.digest());
     
     // Select the highest processed message number
     highestMessageNumber = Provable.if(
@@ -72,40 +86,44 @@ export class Messages extends RuntimeModule<Record<string, never>> {
   }
 
   @runtimeMethod()
-  public processMessage(message: Message) { 
-    const latestNumber = this.lastMessageNumber.get();
-    assert(
-      message.number.greaterThan(latestNumber.value),
-      "Message number does not exceed the highest number tracked thus far!"
-    );
-    
+  public processMessage(messageProof: MessageProof) { 
     const sender = this.transaction.sender.value;
-    const agentDetails = this.messages.get(sender);
+    const storedMessageDigest= this.messages.get(sender);
     assert(
-      agentDetails.isSome,
+      storedMessageDigest.isSome,
       "Agent doesn't exist in the system!"
     );
+
+    const latestNumber = this.lastMessageNumber.get();
+
+    const messageNumber = messageProof.publicOutput.number;
     
-    const storedAgentId = agentDetails.value.agentId;
     assert(
-      message.details.agentId.equals(storedAgentId),
-      "The Agent ID does not match the stored value in the system!"
+      messageNumber.greaterThan(latestNumber.value),
+      "Message number does not exceed the highest number tracked thus far!"
     );
+
+    // 1. Verify that both the subject and agent security code are of the correct length 
+    // 2. Maintain privacy of message details 
+    messageProof.verify();
     
-    const storedSecurityCode = agentDetails.value.securityCode;
     assert(
-      message.details.securityCode.equals(storedSecurityCode),
-      "The Agent Security Code does not match the stored value in the system!"
+      messageProof.publicOutput.securityCodeCheck,
+      "The agent security code length must be exactly 2 characters!"
     );
-    
-    const lowerBound = message.details.subject.greaterThanOrEqual(10 ** 11);
-    const upperBound = message.details.subject.lessThan(10 ** 12);
+
     assert(
-      lowerBound.and(upperBound),
+      messageProof.publicOutput.subjectCheck,
       "The message length must be exactly 12 characters!"
     );
 
+    const messageDigest = messageProof.publicOutput.digest;
+    assert(
+      messageDigest.equals(storedMessageDigest.value),
+      "Agent ID and/or security code is not compliant!"
+    );
+
     // Update the last message number state after all validations are completed.
-    this.lastMessageNumber.set(message.number);
+    this.lastMessageNumber.set(messageNumber);
   }
 }
