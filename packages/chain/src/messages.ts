@@ -31,17 +31,6 @@ export class AgentData extends Struct({
   details: AgentDetails,
 }) {}
 
-export class MessageDetails extends Struct({
-  agentId: Field,
-  subject: Field, // 12 character
-  securityCode: Field, // 2 character
-}) {}
-
-export class Message extends Struct({
-  number: Field,
-  details: MessageDetails,
-}) {}
-
 @runtimeModule()
 export class Messages extends RuntimeModule<Record<string, never>> {
   @state() public lastMessageNumber = State.from<Field>(Field);

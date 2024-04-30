@@ -1,5 +1,5 @@
 import { Field, PrivateKey } from "o1js";
-import { Message, MessageDetails, AgentData, AgentDetails } from "../src/messages";
+import { AgentData, AgentDetails } from "../src/messages";
 
 export { 
   generateRandomMessage,
@@ -16,16 +16,16 @@ function generateRandomMessageNumber(max = 2000): Field {
   return Field(generateRandomNumber(1, max));
 }
   
-function generateRandomValidMessageDetails(): MessageDetails {
+function generateRandomValidMessageDetails() {
   const randomAgentId = Field.random();
   const randomSubject = generateRandomNumber(10 ** 11, 10 ** 12);
   const randomSecurityCode = generateRandomNumber(10, 100);
   
-  return new MessageDetails({   
+  return {   
     agentId: randomAgentId,
     subject: Field(randomSubject),
     securityCode: Field(randomSecurityCode),
-  })
+  }
 } 
 
 function generateRandomValidAgentData(messageNumber?: Field, maxRange=100) {
@@ -42,24 +42,24 @@ function generateRandomValidAgentData(messageNumber?: Field, maxRange=100) {
   });
 } 
   
-function generateRandomMessage(messageNumber?: Field, maxRange=100): Message {
-  return new Message({
+function generateRandomMessage(messageNumber?: Field, maxRange=100) {
+  return {
     number: messageNumber ?? generateRandomMessageNumber(maxRange),
     details: generateRandomValidMessageDetails(),
-  });
+  };
 }
 
 function generateValidMessage(agentData: AgentData) {
-  const messageDetails = new MessageDetails({
+  const messageDetails = {
     agentId: agentData.details.agentId,
     subject: Field(generateRandomNumber(10 ** 11, 10 ** 12)),
     securityCode: agentData.details.securityCode,
-  });
+  };
 
-  return new Message({
+  return {
     number: agentData.number,
     details: messageDetails,
-  });
+  };
 
 }
 

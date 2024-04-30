@@ -2,7 +2,6 @@ import { TestingAppChain } from "@proto-kit/sdk";
 import { Bool, Field, PrivateKey, PublicKey } from "o1js";
 import { 
   Messages, 
-  Message, 
   AgentData,
 } from "../src/messages";
 import { log } from "@proto-kit/common";
@@ -107,7 +106,7 @@ describe("spy master", () => {
   describe("AppChain: processMessage method", () => {
     async function processMessageTx(
       signerKey: PrivateKey, 
-      validMessage: Message, 
+      validMessage: ReturnType<typeof generateValidMessage>, 
       txStatus=false
     ) {
       appChain.setSigner(signerKey);
