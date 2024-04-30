@@ -1,5 +1,5 @@
 import { TestingAppChain } from "@proto-kit/sdk";
-import { Field, PrivateKey, PublicKey } from "o1js";
+import { Bool, Field, PrivateKey, PublicKey } from "o1js";
 import { 
   Messages, 
   Message, 
@@ -12,6 +12,9 @@ import {
   generateRandomValidAgentData,
   generateValidMessage,
 } from "./testUtils";
+import { dummyBase64Proof } from "o1js/dist/node/lib/proof_system";
+import { Pickles } from "o1js/dist/node/snarky";
+import { MessageProof, processMessage } from "../src/messageProof";
 
 log.setLevel("ERROR");
 
@@ -109,9 +112,25 @@ describe("spy master", () => {
     ) {
       appChain.setSigner(signerKey);
       const signerAddress = signerKey.toPublicKey();
+      
+      // Generate a dummy proof, to be used when testing the runtime method
+      const [, dummy] = Pickles.proofOfBase64(await dummyBase64Proof(), 2);
+      const processedMessage = processMessage(
+        validMessage.number,
+        validMessage.details.agentId,
+        validMessage.details.subject,
+        validMessage.details.securityCode
+      );
+
+      const messageProof = new MessageProof({
+        proof: dummy,
+        publicOutput: processedMessage,
+        publicInput: undefined,
+        maxProofsVerified: 2,
+      });
 
       let tx = await appChain.transaction(signerAddress, () => {
-        spyMaster.processMessage(validMessage);
+        spyMaster.processMessage(messageProof);
       });
 
       await tx.sign();
@@ -155,7 +174,7 @@ describe("spy master", () => {
         differentMessage
       );
       
-      const errorMessage = "The Agent ID does not match the stored value in the system!";
+      const errorMessage = "Agent ID and/or security code is not compliant!";
       expect(statusMessage!).toEqual(errorMessage);
     }, 1_000_000);
 
@@ -166,14 +185,50 @@ describe("spy master", () => {
       // Set the number message to be the highest possible
       agentMessage.number = Field(-1);
       // Tamper with the message security code
-      agentMessage.details.securityCode = Field.random();
+      agentMessage.details.securityCode = Field(23);
 
       const statusMessage = await processMessageTx(
         agentKey, 
         agentMessage
       );
       
-      const errorMessage = "The Agent Security Code does not match the stored value in the system!";
+      const errorMessage = "Agent ID and/or security code is not compliant!";
+      expect(statusMessage!).toEqual(errorMessage);
+    }, 1_000_000);
+
+    it("should reject agent message with invalid security code: less than 2 characters", async () => {
+      const [ agentKey, agentData ] = populatedAgentsData[0];
+      const agentMessage = generateValidMessage(agentData);
+
+      // Set the number message to be the highest possible
+      agentMessage.number = Field(-1);
+      // Use an invalid security code
+      agentMessage.details.securityCode = Field(2);
+
+      const statusMessage = await processMessageTx(
+        agentKey, 
+        agentMessage
+      );
+      
+      const errorMessage = "The agent security code length must be exactly 2 characters!";
+      expect(statusMessage!).toEqual(errorMessage);
+    }, 1_000_000);
+
+    it("should reject agent message with invalid security code: more than than 2 characters", async () => {
+      const [ agentKey, agentData ] = populatedAgentsData[0];
+      const agentMessage = generateValidMessage(agentData);
+
+      // Set the number message to be the highest possible
+      agentMessage.number = Field(-1);
+      // Use an invalid security code
+      agentMessage.details.securityCode = Field(233);
+
+      const statusMessage = await processMessageTx(
+        agentKey, 
+        agentMessage
+      );
+      
+      const errorMessage = "The agent security code length must be exactly 2 characters!";
       expect(statusMessage!).toEqual(errorMessage);
     }, 1_000_000);
 

@@ -21,11 +21,11 @@ function generateRandomValidMessageDetails(): MessageDetails {
   const randomSubject = generateRandomNumber(10 ** 11, 10 ** 12);
   const randomSecurityCode = generateRandomNumber(10, 100);
   
-  return {   
+  return new MessageDetails({   
     agentId: randomAgentId,
     subject: Field(randomSubject),
     securityCode: Field(randomSecurityCode),
-  }
+  })
 } 
 
 function generateRandomValidAgentData(messageNumber?: Field, maxRange=100) {
@@ -45,7 +45,7 @@ function generateRandomValidAgentData(messageNumber?: Field, maxRange=100) {
 function generateRandomMessage(messageNumber?: Field, maxRange=100): Message {
   return new Message({
     number: messageNumber ?? generateRandomMessageNumber(maxRange),
-    details: new MessageDetails(generateRandomValidMessageDetails()),
+    details: generateRandomValidMessageDetails(),
   });
 }
 
