@@ -1,5 +1,5 @@
 import { TestingAppChain } from "@proto-kit/sdk";
-import { Bool, Field, PrivateKey, PublicKey } from "o1js";
+import { Field, PrivateKey, PublicKey } from "o1js";
 import { 
   Messages, 
   AgentData,
