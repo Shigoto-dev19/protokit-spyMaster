@@ -8,10 +8,6 @@ import { State, StateMap, assert } from "@proto-kit/protocol";
 import { Field, Poseidon, Provable, PublicKey, Struct, UInt64 } from "o1js";
 import { MessageProof } from "./messageProof";
 
-//TODO Update README for both branches
-
-//TODO Use inheritance to extend state storage
-//TODO udpate stored state to nonce, block height, transaction sender, 
 
 export class AgentDetails extends Struct({
   agentId: Field, // 12 character
