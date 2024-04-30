@@ -5,7 +5,7 @@ import {
   runtimeMethod,
 } from "@proto-kit/module";
 import { State, StateMap, assert } from "@proto-kit/protocol";
-import { Field, Poseidon, Provable, PublicKey, Struct } from "o1js";
+import { Field, Poseidon, Provable, PublicKey, Struct, UInt64 } from "o1js";
 import { MessageProof } from "./messageProof";
 
 //TODO Update README for both branches
@@ -114,5 +114,64 @@ export class Messages extends RuntimeModule<Record<string, never>> {
 
     // Update the last message number state after all validations are completed.
     this.lastMessageNumber.set(messageNumber);
+  }
+}
+
+//? NOTE: Transaction sender will be the key to state map
+//?       so there is no need to include it in the object
+export class NewState extends Struct({
+  detailsDigest: Field,
+  blockHeight: UInt64,
+  sendersNonce: UInt64
+}) {}
+
+@runtimeModule()
+export class MessagesSnapshot extends Messages {
+  @state() public registrySnapshot = StateMap.from<PublicKey, NewState>(
+    PublicKey,
+    NewState
+  );
+
+  @runtimeMethod()
+  public override registerAgent(agentAddress: PublicKey, validAgent: AgentData) {
+    // Fetch the highest message number tracker state
+    let storedMessageNumber = this.lastMessageNumber.get();
+
+    // Initialize the highest message number tracker state as zero if never updated
+    let highestMessageNumber = Provable.if(
+      storedMessageNumber.isSome,
+      storedMessageNumber.value,
+      Field(0)
+    );
+    
+    // Reject agents with invalid security code
+    const lowerBound = validAgent.details.securityCode.greaterThanOrEqual(10);
+    const upperBound = validAgent.details.securityCode.lessThanOrEqual(99);
+    assert(
+      lowerBound.and(upperBound),
+      "The agent security code length must be exactly 2 characters!"
+    );
+
+    const newState = new NewState({
+      detailsDigest: validAgent.details.digest(),
+      blockHeight: this.network.block.height,
+      sendersNonce: this.transaction.nonce.value,
+    });
+
+    //! Store the agent details to avoid overriding the second method
+    this.messages.set(agentAddress, validAgent.details.digest());
+
+    // Store the new state
+    this.registrySnapshot.set(agentAddress, newState);
+    
+    // Select the highest processed message number
+    highestMessageNumber = Provable.if(
+      highestMessageNumber.lessThan(validAgent.number),
+      validAgent.number,
+      highestMessageNumber
+    );
+
+    // Update the highest message number state
+    this.lastMessageNumber.set(highestMessageNumber);
   }
 }
