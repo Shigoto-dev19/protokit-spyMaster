@@ -1,46 +1,57 @@
-import { assert } from "@proto-kit/protocol";
-import { Field, Struct, Experimental} from "o1js";
-import { MessageDetails } from "./messages";
+import {
+    Field,
+    Struct,
+    Experimental,
+    Poseidon,
+    Bool,
+} from "o1js";
 
-export class ProcessedMesage extends Struct({
-  number: Field,
-  digest: Field,
+export class ProcessedMessage extends Struct({
+    number: Field,
+    digest: Field,
+    securityCodeCheck: Bool,
+    subjectCheck: Bool,  
 }) {}
 
-export const messageProcessor = Experimental.ZkProgram({
+//? NOTE: Returning Bool checks makes it elaborate to track error source while preserving privacy
+//? This is mainly for testing purposes otherwise verifying the proof is enough to tell if message details are valid
+export function processMessage(
+    messageNumber: Field,
+    agentId: Field,
+    subject: Field,
+    securityCode: Field
+) {
+    // Validate security code length
+    const securityLowerBound = securityCode.greaterThanOrEqual(10);
+    const securityUpperBound = securityCode.lessThanOrEqual(99);
+    const securityCodeCheck = securityLowerBound.and(securityUpperBound);
+
+    // Validate message subject length
+    const subjectLowerBound = subject.greaterThanOrEqual(10 ** 11);
+    const subjectUpperBound = subject.lessThan(10 ** 12);
+    const subjectCheck = subjectLowerBound.and(subjectUpperBound);
+
+    const processedMessage = new ProcessedMessage({
+        number: messageNumber,
+        digest: Poseidon.hash([agentId, securityCode]),
+        securityCodeCheck,
+        subjectCheck,
+    });
+
+    return processedMessage;
+}
+
+export const MessageProcessor = Experimental.ZkProgram({
     key: 'message-processor',
-    publicOutput: ProcessedMesage,
+    publicOutput: ProcessedMessage,
 
     methods: {
         processMessage: {
-            privateInputs: [Field, MessageDetails],
-            method: (messageNumber: Field, messageDetails: MessageDetails) => {
-                // Validate security code length
-                const securityLowerBound = messageDetails.securityCode.greaterThanOrEqual(10);
-                const securityUpperBound = messageDetails.securityCode.lessThanOrEqual(99);
-                assert(
-                securityLowerBound.and(securityUpperBound),
-                "The agent security code length must be exactly 2 characters!"
-                );
-
-                // Validate message subject length
-                const subjectLowerBound = messageDetails.subject.greaterThanOrEqual(10 ** 11);
-                const subjectUpperBound = messageDetails.subject.lessThan(10 ** 12);
-                assert(
-                    subjectLowerBound.and(subjectUpperBound),
-                    "The message length must be exactly 12 characters!"
-                );
-
-                const processedMessage = new ProcessedMesage({
-                    number: messageNumber,
-                    digest: messageDetails.digest(),
-                });
-
-                return processedMessage;
-            },
+            privateInputs: [Field, Field, Field, Field],
+            method: processMessage
         },
     },
 });
 
-export let MessageProof_ = Experimental.ZkProgram.Proof(messageProcessor);
+export let MessageProof_ = Experimental.ZkProgram.Proof(MessageProcessor);
 export class MessageProof extends MessageProof_ {}
